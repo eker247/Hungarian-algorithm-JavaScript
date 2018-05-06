@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>Algorytm węgierski</title>
+        <link rel="stylesheet" href="style.css">
+        <!-- Latest compiled and minified CSS -->
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+
+        <!-- jQuery library -->
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+
+        <!-- Latest compiled JavaScript -->
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+    </head>
+    <body>
+        <div class="container">
+            <div class="jumbotron" style="text-align: center;">
+                <h1>Algorytm węgierski</h1>
+                <h2>PWSZ w Nowym Sączu</h2>
+            </div>
+            <div class="hungarian">
+                Wprowadź liczbę zadań: <input type="number"
+                                        id="matrixSize" min=1 value=4 />
+                <button class="btn btn-info" name="acceptDimension"
+                onclick="createMatrix()">Zatwierdź wymiar</button>
+            </div>
+            <div class="hungarian" id="div_matrix"></div>
+            <div class="hungarian" id="div_result"></div>
+        </div>
+    </body>
+
+<script type="text/javascript">
+var mx;
+function getMatrixSize() {
+    return document.getElementById('matrixSize').value;
+}
+
+function createMatrix() {
+    var size = getMatrixSize();
+    if (1 > size) {
+        alert("Wprowadź liczbę całkowitą większą niż 0");
+        return;
+    }
+    mx = new Matrix(size);
+    document.getElementById('div_matrix').innerHTML = mx.printMatrix();
+}
+
+function computeMatrix() {
+    mx.getData();
+    // alert(mx.array);
+    mx.hungarianAlgorithm();
+}
+
+class Matrix
+{
+    constructor(i) {
+        if (1 <= i) {
+            this.i = parseInt(i);
+            this.array = [];
+        }
+    }
+
+    printMatrix() {
+        var str = "<table>";
+        for (var i = 0; i < this.i; i++) {
+            str = str + "<tr>";
+            for (var j = 0; j < this.i; j++) {
+                str = str +
+                "<td><input class='inputValueMatrix' min=0 type='number' id='" +
+                i + "," + j + "' value=0 /></td>";
+            }
+            str = str + "</tr>";
+        }
+        str += "</table>";
+        str += "<button class='btn btn-info' onclick='computeMatrix()'>Oblicz</button>";
+        return str;
+    }
+
+    getData() {
+        for (var i = 0; i < this.i; i++) {
+            this.array[i] = [];
+            for (var j = 0; j < this.i; j++) {
+                this.array[i][j] = document.getElementById(i + "," + j).value;
+            }
+        }
+    }
+
+    independentZeros(arr) {
+        var zeroI = [];
+        var zeroJ = [];
+        var j = 0;
+        for (var i = 0; i < this.i; ) {
+            var hasZero = false;
+            for (; j < this.i; j++) {
+                if (-1 == zeroJ.indexOf(j) && arr[i][j] == 0) {
+                    // alert("Znalazł zero: " + i + ", " + j);
+                    zeroI.push(i);
+                    zeroJ.push(j);
+                    ++i;
+                    j = 0;
+                    hasZero = true;
+                    break;
+                }
+            }
+            if (!hasZero && (0 == zeroI.length || 0 == zeroJ.length)) {
+                // alert("nie znaleziono rozwiązania");
+                return [];
+            }
+            else if(!hasZero) {
+                // alert("Niepoprawna pętla");
+                i = zeroI.pop();
+                j = zeroJ.pop()*1 + 1;
+            }
+        }
+        return [zeroI, zeroJ];
+        // alert("success! i: " + zeroI + ", j: " + zeroJ);
+    }
+
+    hungarianAlgorithm() {
+        if (this.i < 2) {
+            alert("Jedyny pracownik otrzymuje jedyne zadanie...");
+            return;
+        }
+        var arr = this.copyArray(this.array);
+        var result = [];
+        var min;
+        do {
+            // najmniejszy element w wierszu
+            for (var i = 0; i < this.i; i++) {
+                min = Math.min(...arr[i]);
+                for (var j = 0; j < this.i; j++) {
+                    arr[i][j] = arr[i][j] - min;
+                }
+            }
+            // najmniejszy element w kolumnie
+            for (var j = 0; j < this.i; j++) {
+                min = arr[0][j];
+                for (var i = 1; i < this.i; i++) {
+                    if (arr[i][j] < min) {
+                        min = arr[i][j];
+                    }
+                }
+                for (var i = 0; i < this.i; i++) {
+                    arr[i][j] -= min;
+                }
+            }
+            this.generateNewZeros(arr);
+            result = this.independentZeros(arr);
+        } while (result.length == 0);
+        // alert("I: " + result[0] + ", J:" + result[1]);
+
+        this.clearStyle();
+
+        var sum = 0;
+        for (var k = 0; k < this.i; ++k) {
+            sum += this.array[result[0][k]][result[1][k]]*1;
+            this.markCell(result[0][k], result[1][k]);
+        }
+        // alert(result + " suma " + sum);
+        document.getElementById("div_result").innerHTML =  " Suma: " + sum;
+    }
+
+    generateNewZeros(arr) {
+        var brr = this.emptyArray(arr);
+        var count = 0;    // tymczasowa liczba zer w wierszu lub kolumnie
+        var maxCount = 0; // największa liczba zer w wierszu lub kolumnie
+        var ptr = -1;     // wskaźnik na kolumnę lub wiersz
+        var colRow = "n"; // c - kolumna, r - wiersz, n - null
+        // tutaj pętla dla wszystkich wierszy lub kolumn
+        for (var k = 0; k < this.i; ++k) {
+            count = 0;
+            maxCount = 0;
+            ptr = -1;
+            colRow = "n";
+            // wiersz z największą liczbą zer
+            for (var i = 0; i < this.i; ++i) {
+                if (-1 < brr[i][0].search(/r/)) {
+                    continue;
+                }
+                count = 0;
+                for (var j = 0; j < this.i; ++j) {
+                    if (arr[i][j] == 0 && brr[i][j].search(/[rc]/) == -1) {
+                        ++count;
+                    }
+                }
+                if (maxCount < count) {
+                    maxCount = count;
+                    ptr = i;
+                    colRow = "r";
+                }
+            }
+            // kolumna z największą liczbą zer
+            for (var j = 0; j < this.i; ++j) {
+                if (-1 < brr[0][j].search(/c/)) {
+                    continue;
+                }
+                count = 0;
+                for (var i = 0; i < this.i; ++i) {
+                    if (arr[i][j] == 0 && brr[i][j].search(/[rc]/) == -1) {
+                        ++count;
+                    }
+                }
+                if (maxCount < count) {
+                    maxCount = count;
+                    ptr = j;
+                    colRow = "c";
+                }
+            }
+
+            // przekreślenie wirsza
+            if (colRow == "r") {
+                for (var j = 0; j < this.i; ++j) {
+                    brr[ptr][j] += "r";
+                }
+            }
+
+            // przekreślenie kolumny
+            if (colRow == "c") {
+                for (var i = 0; i < this.i; ++i) {
+                    brr[i][ptr] += "c";
+                }
+            }
+        }
+
+        // najmniejszy wśród nieprzekreślonych
+        var minNotStriked = 9999;
+        for (var i = 0; i < this.i; ++i) {
+            for (var j = 0; j < this.i; ++j) {
+                if (brr[i][j].search(/[rc]/) == -1 && arr[i][j] < minNotStriked) {
+                    minNotStriked = arr[i][j];
+                }
+            }
+        }
+
+        // generowanie zer w nowych komórkach
+        for (var i = 0; i < this.i; ++i) {
+            for (var j = 0; j < this.i; ++j) {
+                // odejmij minimalny w nieprzekreślonych komórkach
+                if (brr[i][j].search(/[rc]/) == -1) {
+                    arr[i][j] -= minNotStriked*1;
+                    // alert("Dodaję " + minNotStriked);
+                }
+                // dodaj minimalny w podwójnie przekreślonych komórkach
+                else if (brr[i][j].search(/[r]/) >= 0 &&
+                         brr[i][j].search(/[c]/) >= 0) {
+                    arr[i][j] += minNotStriked*1;
+                    // alert("Odejmuję " + minNotStriked);
+                }
+            }
+        }
+    }
+
+    copyArray(arr) {
+        var copy = [];
+        for (var i = 0; i < this.i; ++i) {
+            copy[i] = [];
+            for (var j = 0; j < this.i; ++j) {
+                copy[i][j] = arr[i][j];
+            }
+        }
+        return copy;
+    }
+
+    // przekreślenie
+    emptyArray(arr) {
+        var empty = [];
+        for (var i = 0; i < this.i; ++i) {
+            empty[i] = [];
+            for (var j = 0; j < this.i; ++j) {
+                empty[i][j] = "";
+            }
+        }
+        return empty;
+    }
+
+    markCell(i, j) {
+        document.getElementById(i + "," + j).style.backgroundColor="gold";
+    }
+
+    clearStyle() {
+        for (var i = 0; i < this.i; ++i) {
+            for (var j = 0; j < this.i; ++j) {
+                // alert(i + ", j: " + j);
+                document.getElementById(i + "," + j).style.backgroundColor="";
+            }
+        }
+    }
+}
+</script>
+</html>
